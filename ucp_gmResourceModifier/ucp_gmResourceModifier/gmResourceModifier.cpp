@@ -53,7 +53,7 @@ void __thiscall ColorAdapter::detouredLoadGmFiles(char* fileNameArray)
   // ready everything:
 
   // hardcoded to 240 headers currently
-  size_t numberOfImages{ 0 };
+  size_t numberOfImages{ 1 };
   for (size_t i{ 0 }; i < 240; i++)
   {
     int pictureIndex{ static_cast<int>(shcHeaderStart[i].numberOfPicturesInFile < 1 ? -1 : numberOfImages) };
@@ -112,7 +112,7 @@ void ColorAdapter::TransformRGB555ToRGB565(unsigned short* data, size_t byteSize
   }
 }
 
-
+// TODO: test!!
 void ColorAdapter::AdaptGm1Resource(Gm1Resource& resource)
 {
   if (resource.done)
@@ -281,7 +281,9 @@ bool Gm1Resource::ReadyResource(Gm1Resource& resource)
 
   ColorAdapter::AdaptGm1Resource(resource); // needs relative to object offsets
 
-    // adjust offsets to SHC memory
+
+  // TODO -> still broken?
+  // adjust offsets to SHC memory
   for (size_t i{ 0 }; i < resource.gm1Header->numberOfPicturesInFile; ++i)
   {
     resource.imageOffset[i] = (int)resource.imageData.get() + resource.imageOffset[i] - shcGmDataAddr;

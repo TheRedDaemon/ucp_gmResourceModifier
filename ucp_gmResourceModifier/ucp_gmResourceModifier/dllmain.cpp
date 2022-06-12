@@ -31,6 +31,10 @@ extern "C" __declspec(dllexport) int __cdecl luaopen_gmResourceModifier(lua_Stat
   lua_setfield(L, -2, "address_TransformTgxFromRGB555ToRGB565");
 
   // address
+  lua_pushinteger(L, (DWORD)&ColorAdapter::gamePixelFormat);
+  lua_setfield(L, -2, "address_GamePixelFormatAddr");
+
+  // address
   lua_pushinteger(L, (DWORD)&shcImageHeaderStart);
   lua_setfield(L, -2, "address_ShcImageHeaderStart");
 

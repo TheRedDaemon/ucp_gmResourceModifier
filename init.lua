@@ -7,24 +7,53 @@ exports.enable = function(self, moduleConfig, globalConfig)
 
   --[[ get addresses ]]--
 
-  local getTextFuncStart = core.AOBScan("8b 44 24 04 8d 50 fb", 0x400000)
-  if getTextFuncStart == nil then
-    print("'gmResourceModifier' was unable to find the start of the address that selects the right text strings.")
-    error("'gmResourceModifier' can not be initialized.")
-  end
-  local backJmpAddress = getTextFuncStart + 7 -- address to jmp back to
-  
-  local callToLoadCRTexFunc = core.AOBScan("e8 ? ? ? ff e8 ? ? ? ff 6a 08", 0x400000)
-  if callToLoadCRTexFunc == nil then
-    print("'gmResourceModifier' was unable to find the call to load the CRTex file.")
+  local placeToReplaceLoadGmsAddr = core.AOBScan("e8 ? ? ? ff b9 ? ? ? 02 e8 ? ? ? ff 53 6a 03", 0x400000)
+  if placeToReplaceLoadGmsAddr == nil then
+    print("'gmResourceModifier' was unable to find the gms loading call.")
     error("'gmResourceModifier' can not be initialized.")
   end
   
-  local realLoadCRTexFunc = core.AOBScan("51 53 55 56 33 ed 8b f1 55 68", 0x400000)
-  if realLoadCRTexFunc == nil then
-    print("'gmResourceModifier' was unable to find the CRTex load func.")
+  local actualLoadGmsAddress = core.AOBScan("53 55 8b 6c 24 0c 56 57 8b d9", 0x400000)
+  if actualLoadGmsAddress == nil then
+    print("'gmResourceModifier' was unable to find the actual gms loading address.")
     error("'gmResourceModifier' can not be initialized.")
   end
+  
+  local transformRGB555ToRGB565 = core.AOBScan("e8 ? ? ? ff 8b 96 4c c8 16 00", 0x400000)
+  if transformRGB555ToRGB565 == nil then
+    print("'gmResourceModifier' was unable to find the RGB555 To RGB565 func address.")
+    error("'gmResourceModifier' can not be initialized.")
+  end
+  transformRGB555ToRGB565 = core.readInteger(transformRGB555ToRGB565 + 1)
+
+  local gmImageHeaderAddr = core.AOBScan("c1 e0 04 81 c1 ? ? ? 00 50 51", 0x400000)
+  if gmImageHeaderAddr == nil then
+    print("'gmResourceModifier' was unable to find the image header address.")
+    error("'gmResourceModifier' can not be initialized.")
+  end
+  gmImageHeaderAddr = core.readInteger(gmImageHeaderAddr + 5)
+
+  local gmSizesAddr = core.AOBScan("89 14 bd ? ? ? 00 eb 53", 0x400000)
+  if gmSizesAddr == nil then
+    print("'gmResourceModifier' was unable to find the gm sizes address.")
+    error("'gmResourceModifier' can not be initialized.")
+  end
+  gmSizesAddr = core.readInteger(gmSizesAddr + 3)
+
+  local gmOffsetAddr = core.AOBScan("8b 2c bd ? ? ? 00 03 d7 3b fa", 0x400000)
+  if gmOffsetAddr == nil then
+    print("'gmResourceModifier' was unable to find the gm offset address.")
+    error("'gmResourceModifier' can not be initialized.")
+  end
+  gmOffsetAddr = core.readInteger(gmOffsetAddr + 3)
+  
+  local pixelFormatAddr = core.AOBScan("81 3d ? ? ? 00 65 05 00 00 75 40", 0x400000)
+  if pixelFormatAddr == nil then
+    print("'gmResourceModifier' was unable to find the address of the pixel format.")
+    error("'gmResourceModifier' can not be initialized.")
+  end
+  pixelFormatAddr = core.readInteger(pixelFormatAddr + 2)
+
 
   --[[ load module ]]--
   
@@ -35,35 +64,54 @@ exports.enable = function(self, moduleConfig, globalConfig)
   end
   
   -- no wrapping needed?
-  self.SetText = requireTable.lua_SetText
+  self.LoadGm1Resource = requireTable.lua_LoadGm1Resource
+  self.SetGm = requireTable.lua_SetGm
   
 
   --[[ modify code ]]--
   
-  -- write the jmp to the own function
+  -- write the call to the own function
   core.writeCode(
-    getTextFuncStart,
-    {0xE9, requireTable.funcAddress_GetMapText - getTextFuncStart - 5}  -- jmp to func
+    placeToReplaceLoadGmsAddr,
+    {0xE8, requireTable.funcAddress_DetouredLoadGmFiles - placeToReplaceLoadGmsAddr - 5}  -- call to func
   )
   
-  -- give return jump address to the dll
+  -- give actual load gms function
   core.writeCode(
-    requireTable.address_ToNativeTextAddr,
-    {backJmpAddress}
+    requireTable.address_ActualLoadGmsFunc,
+    {actualLoadGmsAddress}
   )
   
-  -- gives the address of crusaders CRTex load func
+  -- give actual RGB transform function
   core.writeCode(
-    requireTable.address_RealLoadCRTFuncAddr,
-    {realLoadCRTexFunc}
+    requireTable.address_TransformTgxFromRGB555ToRGB565,
+    {transformRGB555ToRGB565}
   )
   
-  -- writes the call to the modified loadCRT in the mainLoop
+  -- give address of image header
   core.writeCode(
-    callToLoadCRTexFunc,
-    {0xE8, requireTable.funcAddress_InterceptedLoadCRTex - callToLoadCRTexFunc - 5}
+    requireTable.address_ShcImageHeaderStart,
+    {gmImageHeaderAddr}
   )
   
+  -- give address of image sizes
+  core.writeCode(
+    requireTable.address_ShcSizesStart,
+    {gmSizesAddr}
+  )
+  
+  -- give address of image offset
+  core.writeCode(
+    requireTable.address_ShcOffsetStart,
+    {gmOffsetAddr}
+  )
+  
+  -- give address to pixel format
+  core.writeCode(
+    requireTable.address_GamePixelFormatAddr,
+    {pixelFormatAddr}
+  )
+
   
   --[[ use config ]]--
   
@@ -72,8 +120,11 @@ exports.enable = function(self, moduleConfig, globalConfig)
 
   --[[ test code ]]--
   
-  -- self.SetText(4, 0, "Güterchen")
-
+  --local resId = self.LoadGm1Resource("ucp/resources/tile_castle.gm1")
+  --self.SetGm(0x34, -1, resId, -1)
+  
+  --local resId2 = self.LoadGm1Resource("gm/anim_windmill.gm1")
+  --self.SetGm(0x1a, -1, resId2, -1)
 end
 
 exports.disable = function(self, moduleConfig, globalConfig) error("not implemented") end
