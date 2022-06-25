@@ -74,10 +74,10 @@ public:
   size_t refCounter{ 0 };
 
   std::unique_ptr<Gm1Header> gm1Header{};
-  std::unique_ptr<ImageHeader[]> imageHeader{};
-  std::unique_ptr<int[]> imageSizes{};
-  std::unique_ptr<int[]> imageOffset{};
-  std::unique_ptr<unsigned char[]> imageData{};
+  std::vector<ImageHeader> imageHeader{};
+  std::vector<int> imageSizes{};
+  std::vector<int> imageOffset{};
+  std::vector<unsigned char> imageData{};
 
   static int CreateGm1Resource(const char* filename);
 

@@ -82,7 +82,7 @@ void ColorAdapter::TransformRGB555ToRGB565(unsigned short* data, size_t byteSize
   {
     case TransformType::UNCOMPRESSED_2:
     {
-      for (size_t i{ 0 }; 0 < loopCount; ++i)
+      for (size_t i{ 0 }; i < loopCount; ++i)
       {
         if (data[i] != 0b1111100000011111)
         {
@@ -94,7 +94,7 @@ void ColorAdapter::TransformRGB555ToRGB565(unsigned short* data, size_t byteSize
 
     case TransformType::COLOR_PALETTE:
     {
-      for (size_t i{ 0 }; 0 < loopCount; ++i)
+      for (size_t i{ 0 }; i < loopCount; ++i)
       {
         data[i] = (data[i] & 0x1f) + ((data[i] & 0xfc00) + (data[i] & 0x3e0)) * 2;
       }
@@ -103,7 +103,7 @@ void ColorAdapter::TransformRGB555ToRGB565(unsigned short* data, size_t byteSize
 
     default:
     {
-      for (size_t i{ 0 }; 0 < loopCount; ++i)
+      for (size_t i{ 0 }; i < loopCount; ++i)
       {
         data[i] = (data[i] & 0x1f) + ((data[i] & 0x3e0) >> 5) * 0x40 + ((data[i] & 0x7c00) >> 10) * 0x800;
       }
@@ -133,15 +133,15 @@ void ColorAdapter::AdaptGm1Resource(Gm1Resource& resource)
     case Gm1Type::INTERFACE:
     case Gm1Type::FONT:
     case Gm1Type::TGX_CONST_SIZE:
-      (*shcTransformStruct.*transformTgxFromRGB555ToRGB565)(resource.imageData.get(), resource.gm1Header->dataSize);
+      (*shcTransformStruct.*transformTgxFromRGB555ToRGB565)(resource.imageData.data(), resource.gm1Header->dataSize);
       break;
 
     case Gm1Type::NO_COMPRESSION_1:
-      TransformRGB555ToRGB565((unsigned short*) resource.imageData.get(), resource.gm1Header->dataSize, TransformType::NORMAL);
+      TransformRGB555ToRGB565((unsigned short*) resource.imageData.data(), resource.gm1Header->dataSize, TransformType::NORMAL);
       break;
 
     case Gm1Type::NO_COMPRESSION_2:
-      TransformRGB555ToRGB565((unsigned short*) resource.imageData.get(), resource.gm1Header->dataSize, TransformType::UNCOMPRESSED_2);
+      TransformRGB555ToRGB565((unsigned short*) resource.imageData.data(), resource.gm1Header->dataSize, TransformType::UNCOMPRESSED_2);
       break;
 
     case Gm1Type::TILES_OBJECT:
@@ -149,7 +149,7 @@ void ColorAdapter::AdaptGm1Resource(Gm1Resource& resource)
       for (size_t i{ 0 }; i < resource.gm1Header->numberOfPicturesInFile; ++i)
       {
         // offset needs to be relative to file for this, so offset adjust needs to be last step
-        unsigned short* dataPtr{ (unsigned short*) (resource.imageData.get() + resource.imageOffset[i]) };
+        unsigned short* dataPtr{ (unsigned short*) (resource.imageData.data() + resource.imageOffset[i]) };
         TransformRGB555ToRGB565(dataPtr, 512, TransformType::NORMAL);
         if (resource.imageHeader[i].direction != 0)
         {
@@ -197,10 +197,10 @@ int Gm1Resource::CreateGm1Resource(const char* filename)
 
   // create temp
   std::unique_ptr<Gm1Header> gm1HeaderTemp;
-  std::unique_ptr<int[]> imageOffsetTemp;
-  std::unique_ptr<int[]> imageSizesTemp;
-  std::unique_ptr<ImageHeader[]> imageHeaderTemp;
-  std::unique_ptr<unsigned char[]> imageDataTemp;
+  std::vector<int> imageOffsetTemp{};
+  std::vector<int> imageSizesTemp{};
+  std::vector<ImageHeader> imageHeaderTemp{};
+  std::vector<unsigned char> imageDataTemp{};
 
   // source: https://stackoverflow.com/a/17338119
   std::ifstream ifs;
@@ -215,17 +215,17 @@ int Gm1Resource::CreateGm1Resource(const char* filename)
 
     int numberOfPictures{ static_cast<int>(gm1HeaderTemp->numberOfPicturesInFile) };
 
-    imageOffsetTemp = std::make_unique<int[]>(numberOfPictures);
-    ifs.read((char*) imageOffsetTemp.get(), numberOfPictures * sizeof(int));
+    imageOffsetTemp.resize(numberOfPictures);
+    ifs.read((char*) imageOffsetTemp.data(), numberOfPictures * sizeof(int));
 
-    imageSizesTemp = std::make_unique<int[]>(numberOfPictures);
-    ifs.read((char*)imageSizesTemp.get(), numberOfPictures * sizeof(int));
+    imageSizesTemp.resize(numberOfPictures);
+    ifs.read((char*) imageSizesTemp.data(), numberOfPictures * sizeof(int));
 
-    imageHeaderTemp = std::make_unique<ImageHeader[]>(numberOfPictures);
-    ifs.read((char*)imageHeaderTemp.get(), numberOfPictures * sizeof(ImageHeader));
+    imageHeaderTemp.resize(numberOfPictures);
+    ifs.read((char*) imageHeaderTemp.data(), numberOfPictures * sizeof(ImageHeader));
 
-    imageDataTemp = std::make_unique<unsigned char[]>(gm1HeaderTemp->dataSize);
-    ifs.read((char*) imageDataTemp.get(), gm1HeaderTemp->dataSize);
+    imageDataTemp.resize(gm1HeaderTemp->dataSize);
+    ifs.read((char*) imageDataTemp.data(), gm1HeaderTemp->dataSize);
 
     ifs.close();  // closing manually to trigger error here and not later
   }
@@ -281,14 +281,16 @@ bool Gm1Resource::ReadyResource(Gm1Resource& resource)
 
   ColorAdapter::AdaptGm1Resource(resource); // needs relative to object offsets
 
-
-  // TODO -> still broken?
   // adjust offsets to SHC memory
   for (size_t i{ 0 }; i < resource.gm1Header->numberOfPicturesInFile; ++i)
   {
-    resource.imageOffset[i] = (int)resource.imageData.get() + resource.imageOffset[i] - shcGmDataAddr;
+    resource.imageOffset[i] = (int)resource.imageData.data() + resource.imageOffset[i] - shcGmDataAddr;
 
+    /* 
+    // TODO -> still broken
     // tries to recreate stuff used by the game, but without resource copy -> it will not save memory space
+    // I do not really know what this does... maybe it really is intended to save memory space
+    // for now, it seems to work without, and as long as the copied data is not reduced to the important parts, it does not save space anyway
     if (shcOffsetModifierFlag == 0)
     {
       if ((resource.imageHeader[i].animatedColor & 4) != 0)
@@ -303,7 +305,9 @@ bool Gm1Resource::ReadyResource(Gm1Resource& resource)
         : resource.imageOffset[resource.imageHeader[i].relativeDataPos + i];
       resource.imageSizes[i] = resource.imageSizes[resource.imageHeader[i].relativeDataPos + i];
     }
+    */
   }
+
 
   resource.done = true;
   return true;
@@ -328,14 +332,14 @@ void Replacer::readyOrigResource()
   }
 
   // copy data
-  origResource->imageOffset = std::make_unique<int[]>(numberOfPictures);
-  std::memcpy(origResource->imageOffset.get(), &shcOffsetStart[firstImageIndex], numberOfPictures * sizeof(int));
+  origResource->imageOffset.resize(numberOfPictures);
+  std::memcpy(origResource->imageOffset.data(), &shcOffsetStart[firstImageIndex], numberOfPictures * sizeof(int));
 
-  origResource->imageSizes = std::make_unique<int[]>(numberOfPictures);
-  std::memcpy(origResource->imageSizes.get(), &shcSizesStart[firstImageIndex], numberOfPictures * sizeof(int));
+  origResource->imageSizes.resize(numberOfPictures);
+  std::memcpy(origResource->imageSizes.data(), &shcSizesStart[firstImageIndex], numberOfPictures * sizeof(int));
 
-  origResource->imageHeader = std::make_unique<ImageHeader[]>(numberOfPictures);
-  std::memcpy(origResource->imageHeader.get(), &shcImageHeaderStart[firstImageIndex], numberOfPictures * sizeof(ImageHeader));
+  origResource->imageHeader.resize(numberOfPictures);
+  std::memcpy(origResource->imageHeader.data(), &shcImageHeaderStart[firstImageIndex], numberOfPictures * sizeof(ImageHeader));
 
   origResource->done = true;
 }
@@ -373,9 +377,9 @@ void Replacer::copyToShc(Gm1Resource& resource, int imageIndex, int resourceImag
       mainReplacingResource = nullptr;
     }
     
-    std::memcpy(&shcOffsetStart[firstImageIndex], resource.imageOffset.get(), numberOfPictures * sizeof(int));
-    std::memcpy(&shcSizesStart[firstImageIndex], resource.imageSizes.get(), numberOfPictures * sizeof(int));
-    std::memcpy(&shcImageHeaderStart[firstImageIndex], resource.imageHeader.get(), numberOfPictures * sizeof(ImageHeader));
+    std::memcpy(&shcOffsetStart[firstImageIndex], resource.imageOffset.data(), numberOfPictures * sizeof(int));
+    std::memcpy(&shcSizesStart[firstImageIndex], resource.imageSizes.data(), numberOfPictures * sizeof(int));
+    std::memcpy(&shcImageHeaderStart[firstImageIndex], resource.imageHeader.data(), numberOfPictures * sizeof(ImageHeader));
 
     return;
   }

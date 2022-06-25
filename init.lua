@@ -19,12 +19,11 @@ exports.enable = function(self, moduleConfig, globalConfig)
     error("'gmResourceModifier' can not be initialized.")
   end
   
-  local transformRGB555ToRGB565 = core.AOBScan("e8 ? ? ? ff 8b 96 4c c8 16 00", 0x400000)
+  local transformRGB555ToRGB565 = core.AOBScan("55 8b ec 83 ec 0c 8b 45 08", 0x400000)
   if transformRGB555ToRGB565 == nil then
     print("'gmResourceModifier' was unable to find the RGB555 To RGB565 func address.")
     error("'gmResourceModifier' can not be initialized.")
   end
-  transformRGB555ToRGB565 = core.readInteger(transformRGB555ToRGB565 + 1)
 
   local gmImageHeaderAddr = core.AOBScan("c1 e0 04 81 c1 ? ? ? 00 50 51", 0x400000)
   if gmImageHeaderAddr == nil then
