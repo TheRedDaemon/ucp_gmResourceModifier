@@ -505,6 +505,28 @@ extern "C" __declspec(dllexport) bool __stdcall SetGm(int gmID, int imageInGm, i
 }
 
 
+extern "C" __declspec(dllexport) bool __stdcall FreeGm1Resource(int resourceId)
+{
+  auto iter{ resources.find(resourceId) };
+  if (iter == resources.end())
+  {
+    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: FreeGm1Resource: Invalid ResourceID given.");
+    return false;
+  }
+  Gm1Resource& resource{ iter->second };
+
+  if (resource.refCounter > 0)
+  {
+    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: FreeGm1Resource: Resource in use. Can not free.");
+    return false;
+  }
+
+  resources.erase(iter);
+  freeIds.push_back(resourceId);
+  return true;
+}
+
+
 /* export LUA */
 
 extern "C" __declspec(dllexport) int __cdecl lua_LoadGm1Resource(lua_State * L)
@@ -512,12 +534,12 @@ extern "C" __declspec(dllexport) int __cdecl lua_LoadGm1Resource(lua_State * L)
   int n{ lua_gettop(L) };    /* number of arguments */
   if (n != 1)
   {
-    luaL_error(L, "[textResourceModifier]: lua_LoadGm1Resource: Invalid number of args.");
+    luaL_error(L, "[gmResourceModifier]: lua_LoadGm1Resource: Invalid number of args.");
   }
 
   if (!lua_isstring(L, 1))
   {
-    luaL_error(L, "[textResourceModifier]: lua_LoadGm1Resource: Wrong input fields.");
+    luaL_error(L, "[gmResourceModifier]: lua_LoadGm1Resource: Wrong input fields.");
   }
 
   int res{ Gm1Resource::CreateGm1Resource(lua_tostring(L, 1)) };
@@ -531,15 +553,34 @@ extern "C" __declspec(dllexport) int __cdecl lua_SetGm(lua_State * L)
   int n{ lua_gettop(L) };    /* number of arguments */
   if (n != 4)
   {
-    luaL_error(L, "[textResourceModifier]: lua_SetGm: Invalid number of args.");
+    luaL_error(L, "[gmResourceModifier]: lua_SetGm: Invalid number of args.");
   }
 
   if (!(lua_isinteger(L, 1) && lua_isinteger(L, 2) && lua_isinteger(L, 3) && lua_isinteger(L, 4)))
   {
-    luaL_error(L, "[textResourceModifier]: lua_SetGm: Wrong input fields.");
+    luaL_error(L, "[gmResourceModifier]: lua_SetGm: Wrong input fields.");
   }
 
   bool res{ SetGm(lua_tointeger(L, 1), lua_tointeger(L, 2), lua_tointeger(L, 3), lua_tointeger(L, 4)) };
+  lua_pushboolean(L, res);
+  return 1;
+}
+
+
+extern "C" __declspec(dllexport) int __cdecl lua_FreeGm1Resource(lua_State * L)
+{
+  int n{ lua_gettop(L) };    /* number of arguments */
+  if (n != 1)
+  {
+    luaL_error(L, "[gmResourceModifier]: lua_FreeGm1Resource: Invalid number of args.");
+  }
+
+  if (!lua_isinteger(L, 1))
+  {
+    luaL_error(L, "[gmResourceModifier]: lua_FreeGm1Resource: Wrong input fields.");
+  }
+
+  bool res{ FreeGm1Resource(lua_tointeger(L, 1)) };
   lua_pushboolean(L, res);
   return 1;
 }

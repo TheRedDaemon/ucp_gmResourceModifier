@@ -52,6 +52,8 @@ extern "C" __declspec(dllexport) int __cdecl luaopen_gmResourceModifier(lua_Stat
   lua_setfield(L, -2, GmResourceModifierHeader::NAME_SET_GM);
   lua_pushinteger(L, (DWORD)LoadGm1Resource);
   lua_setfield(L, -2, GmResourceModifierHeader::NAME_LOAD_RESOURCE);
+  lua_pushinteger(L, (DWORD)FreeGm1Resource);
+  lua_setfield(L, -2, GmResourceModifierHeader::NAME_FREE_RESOURCE);
 
   // add table
   lua_setfield(L, -2, "funcPtr");
@@ -62,6 +64,8 @@ extern "C" __declspec(dllexport) int __cdecl luaopen_gmResourceModifier(lua_Stat
   lua_setfield(L, -2, "lua_SetGm");
   lua_pushcfunction(L, lua_LoadGm1Resource);
   lua_setfield(L, -2, "lua_LoadGm1Resource");
+  lua_pushcfunction(L, lua_FreeGm1Resource);
+  lua_setfield(L, -2, "lua_FreeGm1Resource");
 
   return 1;
 }

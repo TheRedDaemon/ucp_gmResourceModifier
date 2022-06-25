@@ -64,6 +64,7 @@ exports.enable = function(self, moduleConfig, globalConfig)
   
   -- no wrapping needed?
   self.LoadGm1Resource = requireTable.lua_LoadGm1Resource
+  self.FreeGm1Resource = requireTable.lua_FreeGm1Resource
   self.SetGm = requireTable.lua_SetGm
   
 
