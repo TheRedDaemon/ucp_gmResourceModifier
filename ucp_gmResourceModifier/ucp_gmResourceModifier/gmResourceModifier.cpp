@@ -449,7 +449,7 @@ extern "C" __declspec(dllexport) bool __stdcall SetGm(int gmID, int imageInGm, i
   Replacer& currentReplacer{ replacerVector[gmID] };
   currentReplacer.readyOrigResource();
 
-  if (imageInGm >= 0 && imageInGm >= currentReplacer.origResource->gm1Header->numberOfPicturesInFile - 1)
+  if (imageInGm >= 0 && imageInGm > currentReplacer.origResource->gm1Header->numberOfPicturesInFile - 1)
   {
     LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: SetGm: Invalid SHC GM1 picture number given.");
     return false;
