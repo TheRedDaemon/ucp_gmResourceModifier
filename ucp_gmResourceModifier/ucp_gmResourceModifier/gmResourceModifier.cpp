@@ -171,7 +171,7 @@ void Gm1Resource::LogHelper(LuaLog::LogLevel level, const char* start, const cha
 {
   static std::stringstream stream{};
   stream.clear();
-  stream << start << filename << "': " << error;
+  stream << start << "'" << filename << "': " << error;
   LuaLog::log(level, stream.str().c_str());
 }
 
@@ -478,15 +478,24 @@ extern "C" __declspec(dllexport) bool __stdcall SetGm(int gmID, int imageInGm, i
 
   if (currentReplacer.origResource->gm1Header->gm1Type != resource.gm1Header->gm1Type)
   {
-    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: SetGm: Resources can only be replaced by the same type.");
-    return false;
+    Gm1Type origType{ currentReplacer.origResource->gm1Header->gm1Type };
+    Gm1Type resourceType{ resource.gm1Header->gm1Type };
+    bool origIsTgxType{ origType == Gm1Type::INTERFACE || origType == Gm1Type::TGX_CONST_SIZE || origType == Gm1Type::FONT };
+    bool resourceIsTgxType{ resourceType == Gm1Type::INTERFACE || resourceType == Gm1Type::TGX_CONST_SIZE || resourceType == Gm1Type::FONT };
+
+    if (!(origIsTgxType && resourceIsTgxType))
+    {
+      LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: SetGm: Resource can not be replaced. Incompatible types.");
+      return false;
+    }
+    LuaLog::log(LuaLog::LOG_DEBUG, "[gmResourceModifier]: SetGm: Replacing TGX data of gm with resource of different type.");
   }
 
   if (imageInResource < 0)
   {
     if (currentReplacer.origResource->gm1Header->numberOfPicturesInFile != resource.gm1Header->numberOfPicturesInFile)
     {
-      LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: SetGm: Complete resources replace can only happen if number of images equal.");
+      LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: SetGm: Complete resource replace can only happen if number of images equal.");
       return false;
     }
 
