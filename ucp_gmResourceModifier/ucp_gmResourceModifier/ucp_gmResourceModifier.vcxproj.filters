@@ -27,6 +27,9 @@
     <ClInclude Include="gmResourceModifierHeader.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="IUnknownWrapper.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -36,6 +39,9 @@
       <Filter>Quelldateien</Filter>
     </ClCompile>
     <ClCompile Include="gmResourceModifier.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="loadImageAsInterfaceResource.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>
