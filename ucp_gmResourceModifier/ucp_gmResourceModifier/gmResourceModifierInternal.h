@@ -66,9 +66,8 @@ struct ImageHeader
 };
 
 
-class Gm1Resource
+struct Gm1Resource
 {
-public:
   int resourceId{};
   bool done{ false };
   size_t refCounter{ 0 };
@@ -78,12 +77,34 @@ public:
   std::vector<int> imageSizes{};
   std::vector<int> imageOffset{};
   std::vector<unsigned char> imageData{};
+};
+
+
+// singleton
+class Gm1ResourceManager
+{
+private:
+  inline static int idGiver{ 0 };
+  inline static std::vector<int> freeIds{};
+
+  inline static std::unordered_map<int, Gm1Resource> resources{};
+
+public:
 
   static int CreateGm1Resource(const char* filename);
+  static bool FreeGm1Resource(int resourceId);
 
-  static bool ReadyResource(Gm1Resource& resource);
+  static void ReadyAllResources();  // for init
+  static Gm1Resource* GetResource(int resourceId);
 
 private:
+
+  Gm1ResourceManager() = delete;
+
+  static int GetId();
+  static void ReturnId(int id);
+
+  static bool ReadyResource(Gm1Resource& resource);
 
   // the compiler should optimize this
   static void LogHelper(LuaLog::LogLevel level, const char* start, const char* filename, const char* error);
@@ -169,3 +190,5 @@ extern "C" __declspec(dllexport) int __stdcall LoadImageAsInterfaceResource(cons
 extern "C" __declspec(dllexport) int __cdecl lua_LoadGm1Resource(lua_State * L);
 extern "C" __declspec(dllexport) int __cdecl lua_SetGm(lua_State * L);
 extern "C" __declspec(dllexport) int __cdecl lua_FreeGm1Resource(lua_State * L);
+
+extern "C" __declspec(dllexport) int __cdecl lua_LoadImageAsInterfaceResource(lua_State * L);
