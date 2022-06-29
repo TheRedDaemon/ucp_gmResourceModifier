@@ -17,17 +17,19 @@ namespace GmResourceModifierHeader
 
   inline constexpr char const* NAME_MODULE{ "gmResourceModifier" };
   inline constexpr char const* NAME_LOAD_RESOURCE{ "_LoadGm1Resource@4" };
+  inline constexpr char const* NAME_LOAD_RESOURCE_FROM_IMAGE{ "_LoadResourceFromImage@4" };
   inline constexpr char const* NAME_SET_GM{ "_SetGm@16" };
   inline constexpr char const* NAME_FREE_RESOURCE{ "_FreeGm1Resource@4" };
 
   inline FuncLoadResource LoadGm1Resource{ nullptr };
   inline FuncSetGm SetGm{ nullptr };
   inline FuncFreeResource FreeGm1Resource{ nullptr };
+  inline FuncLoadResource LoadResourceFromImage{};
 
   // returns true if the function variables of this header were successfully filled
   inline bool initModuleFunctions(lua_State* L)
   {
-    if (LoadGm1Resource && SetGm && FreeGm1Resource) // assumed to not change during runtime
+    if (LoadGm1Resource && SetGm && FreeGm1Resource && LoadResourceFromImage) // assumed to not change during runtime
     {
       return true;
     }
@@ -48,10 +50,12 @@ namespace GmResourceModifierHeader
     lua_pop(L, 1);
     FreeGm1Resource = (lua_getfield(L, -1, NAME_FREE_RESOURCE) == LUA_TNUMBER) ? (FuncFreeResource)lua_tointeger(L, -1) : nullptr;
     lua_pop(L, 1);
+    LoadResourceFromImage = (lua_getfield(L, -1, NAME_LOAD_RESOURCE_FROM_IMAGE) == LUA_TNUMBER) ? (FuncLoadResource)lua_tointeger(L, -1) : nullptr;
+    lua_pop(L, 1);
     SetGm = (lua_getfield(L, -1, NAME_SET_GM) == LUA_TNUMBER) ? (FuncSetGm)lua_tointeger(L, -1) : nullptr;
     lua_pop(L, 3);  // remove value and all tables
 
-    return LoadGm1Resource && SetGm && FreeGm1Resource;
+    return LoadGm1Resource && SetGm && FreeGm1Resource && LoadResourceFromImage;
   }
 }
 

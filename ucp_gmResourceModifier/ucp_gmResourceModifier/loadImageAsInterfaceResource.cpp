@@ -37,13 +37,13 @@ static LPCWSTR GetWideCharFilepathFromUTF8(const char* utf8Str)
 // sources:
 // https://docs.microsoft.com/en-us/windows/win32/wic/-wic-api
 // https://docs.microsoft.com/de-de/windows/win32/wic/-wic-creating-decoder
-extern "C" __declspec(dllexport) int __stdcall LoadImageAsInterfaceResource(const char* filepath)
+extern "C" __declspec(dllexport) int __stdcall LoadResourceFromImage(const char* filepath)
 {
   if (!imageFactory)
   {
     if (CoCreateInstance(CLSID_WICImagingFactory, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(imageFactory.expose())) != S_OK)
     {
-      LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadImageAsInterfaceResource: Was unable to obtain image factory interface.");
+      LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to obtain image factory interface.");
       return -1;
     }
   }
@@ -53,7 +53,7 @@ extern "C" __declspec(dllexport) int __stdcall LoadImageAsInterfaceResource(cons
   LPCWSTR filepathWideStr{ GetWideCharFilepathFromUTF8(filepath) };
   if (!filepathWideStr)
   {
-    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadImageAsInterfaceResource: Was unable to decode filepath (UTF-8).");
+    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to decode filepath (UTF-8).");
     return -1;
   }
 
@@ -71,7 +71,7 @@ extern "C" __declspec(dllexport) int __stdcall LoadImageAsInterfaceResource(cons
 
   if (FAILED(hr))
   {
-    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadImageAsInterfaceResource: Was unable to obtain decoder.");
+    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to obtain decoder.");
     return -1;
   }
 
@@ -83,10 +83,31 @@ extern "C" __declspec(dllexport) int __stdcall LoadImageAsInterfaceResource(cons
   IUnknownWrapper<IWICBitmapFrameDecode> frame;
   if (FAILED(decoderInterface->GetFrame(0, frame.expose())))
   {
-    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadImageAsInterfaceResource: Was unable to obtain frame.");
+    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to obtain frame.");
     return -1;
   }
 
   // use this further: https://stackoverflow.com/a/52685194
   return 0;
+}
+
+
+// lua
+
+extern "C" __declspec(dllexport) int __cdecl lua_LoadResourceFromImage(lua_State * L)
+{
+  int n{ lua_gettop(L) };    /* number of arguments */
+  if (n != 1)
+  {
+    luaL_error(L, "[gmResourceModifier]: lua_LoadResourceFromImage: Invalid number of args.");
+  }
+
+  if (!lua_isstring(L, 1))
+  {
+    luaL_error(L, "[gmResourceModifier]: lua_LoadResourceFromImage: Wrong input fields.");
+  }
+
+  int res{ LoadResourceFromImage(lua_tostring(L, 1)) };
+  lua_pushinteger(L, res);
+  return 1;
 }

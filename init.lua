@@ -66,6 +66,7 @@ exports.enable = function(self, moduleConfig, globalConfig)
   self.LoadGm1Resource = requireTable.lua_LoadGm1Resource
   self.FreeGm1Resource = requireTable.lua_FreeGm1Resource
   self.SetGm = requireTable.lua_SetGm
+  self.LoadResourceFromImage = requireTable.lua_LoadResourceFromImage
   
 
   --[[ modify code ]]--
@@ -123,8 +124,12 @@ exports.enable = function(self, moduleConfig, globalConfig)
   --local resId = self.LoadGm1Resource("ucp/resources/tile_castle.gm1")
   --self.SetGm(0x34, -1, resId, -1)
   
+  --local resId = self.LoadGm1Resource("gm/tile_castle.gm1")
+  --self.SetGm(0x34, -1, resId, -1)
+  
   --local resId2 = self.LoadGm1Resource("gm/anim_windmill.gm1")
   --self.SetGm(0x1a, -1, resId2, -1)
+
 end
 
 exports.disable = function(self, moduleConfig, globalConfig) error("not implemented") end

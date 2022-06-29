@@ -183,7 +183,7 @@ extern "C" __declspec(dllexport) int __stdcall LoadGm1Resource(const char* filep
 extern "C" __declspec(dllexport) bool __stdcall SetGm(int gmID, int imageInGm, int resourceId, int imageInResource);
 extern "C" __declspec(dllexport) bool __stdcall FreeGm1Resource(int resourceId);
 
-extern "C" __declspec(dllexport) int __stdcall LoadImageAsInterfaceResource(const char* filepath);
+extern "C" __declspec(dllexport) int __stdcall LoadResourceFromImage(const char* filepath);
 
 /* LUA */
 
@@ -191,4 +191,4 @@ extern "C" __declspec(dllexport) int __cdecl lua_LoadGm1Resource(lua_State * L);
 extern "C" __declspec(dllexport) int __cdecl lua_SetGm(lua_State * L);
 extern "C" __declspec(dllexport) int __cdecl lua_FreeGm1Resource(lua_State * L);
 
-extern "C" __declspec(dllexport) int __cdecl lua_LoadImageAsInterfaceResource(lua_State * L);
+extern "C" __declspec(dllexport) int __cdecl lua_LoadResourceFromImage(lua_State * L);
