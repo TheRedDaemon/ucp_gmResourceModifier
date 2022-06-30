@@ -33,6 +33,10 @@ public:
     }
   }
 
+  T* get()
+  {
+    return iUnknownPtr;
+  }
   
   T** expose()
   {
