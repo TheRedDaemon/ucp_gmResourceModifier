@@ -127,138 +127,10 @@ extern "C" __declspec(dllexport) int __stdcall LoadResourceFromImage(const char*
     }
   }
 
-
-//{
-//  size_t tgxSize{ 0 };
-//  std::vector<unsigned char> rawTgx{};
-//  rawTgx.resize(rawPixel.size() * sizeof(unsigned short) * 1.5f); // worst size is one control + one pixel -> number of pixels * size of ushort * 1.5
-//  size_t counter{ 0 };
-//  size_t lineCounter{};
-//  bool transparent{ false };
-//  bool sameColor{ false };
-//  unsigned short lastColor{};
-//
-//  // transparency is broken
-//  for (size_t i{ 0 }; i < rawPixel.size(); ++i)
-//  {
-//    unsigned short pixel{ rawPixel[i] };
-//    if (pixel & 0x8000)
-//    {
-//      if (transparent)
-//      {
-//        while (counter > 0)
-//        {
-//          size_t transparentSize{ (counter > 32 ? 32 : counter) };
-//          counter -= transparentSize;
-//          rawTgx[tgxSize] = (unsigned char)(TRANSPARENT_PIXELS | (transparentSize - 1));
-//          ++tgxSize;
-//        }
-//        transparent = false;
-//      }
-//
-//      unsigned short checkColor{ pixel };
-//      if (counter == 0)
-//      {
-//        sameColor = true;
-//        lastColor = checkColor;
-//      }
-//      else if (lastColor != checkColor)
-//      {
-//        sameColor = false;
-//      }
-//
-//      ++counter;
-//      if (counter >= 32 || i == rawPixel.size() - 1)
-//      {
-//        if (sameColor)
-//        {
-//          rawTgx[tgxSize] = (unsigned char)(REPEATING_PIXELS | (counter - 1));
-//          *((unsigned short*)&rawTgx[tgxSize + 1]) = lastColor;
-//          tgxSize += 3;
-//          counter = 0;
-//          sameColor = false;
-//        }
-//        else // other color
-//        {
-//          rawTgx[tgxSize] = (unsigned char)(STREAM_OF_PIXELS | (counter - 1));
-//          ++tgxSize;
-//          for (int j{ (int)counter - 1 }; j >= 0; --j)
-//          {
-//            unsigned short color{ rawPixel[i - j] };
-//            *((unsigned short*)&rawTgx[tgxSize]) = color;
-//            tgxSize += 2;
-//          }
-//          counter = 0;
-//        }
-//      }
-//    }
-//    else // transparent else
-//    {
-//      if (!transparent)
-//      {
-//        if (counter > 0)
-//        {
-//          if (sameColor)
-//          {
-//            rawTgx[tgxSize] = (unsigned char)(REPEATING_PIXELS | (counter - 1));
-//            *((unsigned short*)&rawTgx[tgxSize + 1]) = lastColor;
-//            tgxSize += 3;
-//            counter = 0;
-//            sameColor = false;
-//          }
-//          else // other color
-//          {
-//            rawTgx[tgxSize] = (unsigned char)(STREAM_OF_PIXELS | (counter - 1));
-//            ++tgxSize;
-//            for (int j{ (int)counter - 1 }; j >= 0; --j)
-//            {
-//              unsigned short color{ rawPixel[i - j] };
-//              *((unsigned short*)&rawTgx[tgxSize]) = color;
-//              tgxSize += 2;
-//            }
-//            counter = 0;
-//          }
-//        }
-//        transparent = true;
-//      }
-//      ++counter;
-//    }
-//
-//    ++lineCounter;
-//    if (lineCounter == width)
-//    {
-//      if (transparent)
-//      {
-//        //rawTgx[tgxSize] = NEWLINE;
-//        //++tgxSize;
-//        //transparent = false;
-//        //counter = 0;
-//        while (counter > 0)
-//        {
-//          size_t transparentSize{ (counter > 32 ? 32 : counter) };
-//          counter -= transparentSize;
-//          rawTgx[tgxSize] = (unsigned char)(TRANSPARENT_PIXELS | (transparentSize - 1));
-//          ++tgxSize;
-//        }
-//        transparent = false;
-//      }
-//
-//      if (i != height * width - 1)
-//      {
-//        rawTgx[tgxSize] = NEWLINE;  // nope
-//        ++tgxSize;
-//        lineCounter = 0;
-//      }
-//    }
-//  }
-//}
-
   size_t tgxSize{ 0 };
   std::vector<unsigned char> rawTgx{};
   // worst size is one control + one pixel + one newline at every vertical line end -> number of pixels * size of ushort * 1.5 + height
   rawTgx.resize(rawPixel.size() * sizeof(unsigned short) * 1.5f + height);
-  
-  // second try -> newline does apparently not work in all cases, some require transparent pixel before
 
   size_t lineCounter{};
   for (size_t i{ 0 }; i < rawPixel.size(); ++i)
@@ -356,11 +228,11 @@ extern "C" __declspec(dllexport) int __stdcall LoadResourceFromImage(const char*
 
 
   // testout
-  std::ofstream outdata;
-  outdata.open("gm/test.tgx");
-  outdata.write((char *) &width, 4);
-  outdata.write((char*) &height, 4);
-  outdata.write((char*) rawTgx.data(), tgxSize);
+  //std::ofstream outdata;
+  //outdata.open("gm/test.tgx", std::ios_base::binary); // binary flag needed to avoid modification
+  //outdata.write((char *) &width, 4);
+  //outdata.write((char*) &height, 4);
+  //outdata.write((char*) rawTgx.data(), tgxSize);
 
   // use this further: https://stackoverflow.com/a/52685194
   return 0;
