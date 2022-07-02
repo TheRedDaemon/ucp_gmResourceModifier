@@ -8,7 +8,11 @@
 #include "IUnknownWrapper.h"
 
 
-static enum TgxStreamHeader : unsigned char
+// test
+#include <fstream>
+
+
+enum TgxStreamHeader : unsigned char
 {
   STREAM_OF_PIXELS = 0x0,
   TGX_PIXEL_LENGTH = 0x1f,
@@ -79,7 +83,7 @@ extern "C" __declspec(dllexport) int __stdcall LoadResourceFromImage(const char*
     decoderInterface.expose()           // Pointer to the decoder
   )))
   {
-    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to obtain decoder.");
+    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to obtain decoder. File invalid or missing.");
     return -1;
   }
 
@@ -123,72 +127,240 @@ extern "C" __declspec(dllexport) int __stdcall LoadResourceFromImage(const char*
     }
   }
 
+
+//{
+//  size_t tgxSize{ 0 };
+//  std::vector<unsigned char> rawTgx{};
+//  rawTgx.resize(rawPixel.size() * sizeof(unsigned short) * 1.5f); // worst size is one control + one pixel -> number of pixels * size of ushort * 1.5
+//  size_t counter{ 0 };
+//  size_t lineCounter{};
+//  bool transparent{ false };
+//  bool sameColor{ false };
+//  unsigned short lastColor{};
+//
+//  // transparency is broken
+//  for (size_t i{ 0 }; i < rawPixel.size(); ++i)
+//  {
+//    unsigned short pixel{ rawPixel[i] };
+//    if (pixel & 0x8000)
+//    {
+//      if (transparent)
+//      {
+//        while (counter > 0)
+//        {
+//          size_t transparentSize{ (counter > 32 ? 32 : counter) };
+//          counter -= transparentSize;
+//          rawTgx[tgxSize] = (unsigned char)(TRANSPARENT_PIXELS | (transparentSize - 1));
+//          ++tgxSize;
+//        }
+//        transparent = false;
+//      }
+//
+//      unsigned short checkColor{ pixel };
+//      if (counter == 0)
+//      {
+//        sameColor = true;
+//        lastColor = checkColor;
+//      }
+//      else if (lastColor != checkColor)
+//      {
+//        sameColor = false;
+//      }
+//
+//      ++counter;
+//      if (counter >= 32 || i == rawPixel.size() - 1)
+//      {
+//        if (sameColor)
+//        {
+//          rawTgx[tgxSize] = (unsigned char)(REPEATING_PIXELS | (counter - 1));
+//          *((unsigned short*)&rawTgx[tgxSize + 1]) = lastColor;
+//          tgxSize += 3;
+//          counter = 0;
+//          sameColor = false;
+//        }
+//        else // other color
+//        {
+//          rawTgx[tgxSize] = (unsigned char)(STREAM_OF_PIXELS | (counter - 1));
+//          ++tgxSize;
+//          for (int j{ (int)counter - 1 }; j >= 0; --j)
+//          {
+//            unsigned short color{ rawPixel[i - j] };
+//            *((unsigned short*)&rawTgx[tgxSize]) = color;
+//            tgxSize += 2;
+//          }
+//          counter = 0;
+//        }
+//      }
+//    }
+//    else // transparent else
+//    {
+//      if (!transparent)
+//      {
+//        if (counter > 0)
+//        {
+//          if (sameColor)
+//          {
+//            rawTgx[tgxSize] = (unsigned char)(REPEATING_PIXELS | (counter - 1));
+//            *((unsigned short*)&rawTgx[tgxSize + 1]) = lastColor;
+//            tgxSize += 3;
+//            counter = 0;
+//            sameColor = false;
+//          }
+//          else // other color
+//          {
+//            rawTgx[tgxSize] = (unsigned char)(STREAM_OF_PIXELS | (counter - 1));
+//            ++tgxSize;
+//            for (int j{ (int)counter - 1 }; j >= 0; --j)
+//            {
+//              unsigned short color{ rawPixel[i - j] };
+//              *((unsigned short*)&rawTgx[tgxSize]) = color;
+//              tgxSize += 2;
+//            }
+//            counter = 0;
+//          }
+//        }
+//        transparent = true;
+//      }
+//      ++counter;
+//    }
+//
+//    ++lineCounter;
+//    if (lineCounter == width)
+//    {
+//      if (transparent)
+//      {
+//        //rawTgx[tgxSize] = NEWLINE;
+//        //++tgxSize;
+//        //transparent = false;
+//        //counter = 0;
+//        while (counter > 0)
+//        {
+//          size_t transparentSize{ (counter > 32 ? 32 : counter) };
+//          counter -= transparentSize;
+//          rawTgx[tgxSize] = (unsigned char)(TRANSPARENT_PIXELS | (transparentSize - 1));
+//          ++tgxSize;
+//        }
+//        transparent = false;
+//      }
+//
+//      if (i != height * width - 1)
+//      {
+//        rawTgx[tgxSize] = NEWLINE;  // nope
+//        ++tgxSize;
+//        lineCounter = 0;
+//      }
+//    }
+//  }
+//}
+
   size_t tgxSize{ 0 };
   std::vector<unsigned char> rawTgx{};
-  rawTgx.resize(rawPixel.size() * sizeof(unsigned short) * 1.5); // worst size is one control + one pixel -> number of pixels * size of ushort * 1.5
-  size_t counter{ 0 };
-  size_t lineCounter{};
-  bool transparent{ false };
-  bool sameColor{ false };
-  unsigned short lastColor{};
+  // worst size is one control + one pixel + one newline at every vertical line end -> number of pixels * size of ushort * 1.5 + height
+  rawTgx.resize(rawPixel.size() * sizeof(unsigned short) * 1.5f + height);
+  
+  // second try -> newline does apparently not work in all cases, some require transparent pixel before
 
+  size_t lineCounter{};
   for (size_t i{ 0 }; i < rawPixel.size(); ++i)
   {
-    unsigned short pixel{ rawPixel[i] };
-    if (pixel | 0x0001) // transparent
+    size_t counter{ 0 };
+    
+    ++lineCounter;
+    unsigned short pixel = rawPixel[i];
+    if (!(pixel & 0x8000))  // transparent
     {
-      if (counter > 0)
-      {
-        if (sameColor)
-        {
-          rawTgx[tgxSize] = REPEATING_PIXELS | (counter - 1);
-          rawTgx[tgxSize + 1] = lastColor >> 8;
-          rawTgx[tgxSize + 2] = lastColor & 0x00FF;
-          tgxSize += 3;
-          counter = 0;
-          sameColor = false;
-        }
-        else // other color
-        {
-          rawTgx[tgxSize] = STREAM_OF_PIXELS | (counter - 1);
-          ++tgxSize;
-          for (size_t j{ 0 }; j < counter; ++j)
-          {
-            unsigned short color{ ((pixel & 0xf800) >> 11) | ((pixel & 0x07c0) >> 1) | ((pixel & 0x003e) << 9) };
-            rawTgx[tgxSize] = color >> 8;
-            rawTgx[tgxSize + 1] = color & 0x00FF;
-            tgxSize += 2;
-          }
-          counter = 0;
-        }
-      }
-      else
-      {
-        transparent = true;
-      }
       ++counter;
+      while (lineCounter < width && counter < 32)
+      {
+        pixel = rawPixel[i + 1];
+        if (pixel & 0x8000)  // not transparent anymore
+        {
+          break;
+        }
+        ++counter;
+
+        ++i;  // manipulate loop
+        ++lineCounter;
+      }
+      rawTgx[tgxSize] = (unsigned char)(TRANSPARENT_PIXELS | (counter - 1));
+      ++tgxSize;
     }
     else
     {
+      unsigned short stateArray[32];
+      stateArray[0] = pixel;
+      ++counter;
 
-    }
-    ++counter;
-
-    ++lineCounter;
-    if (lineCounter == width)
-    {
-      if (transparent)
+      while (lineCounter < width && counter < 32)
       {
-        rawTgx[tgxSize] = STREAM_OF_PIXELS;
-        ++tgxSize;
-        transparent = false;
-        counter = 0;
+        pixel = rawPixel[i + 1];
+        if (pixel != stateArray[counter - 1])  // not same color anymore
+        {
+          break;
+        }
+        stateArray[counter] = pixel;
+        ++counter;
+
+        ++i;  // manipulate loop
+        ++lineCounter;
       }
+
+      if (counter > 1)  // currently two pixel provoke same color
+      {
+        rawTgx[tgxSize] = (unsigned char)(REPEATING_PIXELS | (counter - 1));
+        *((unsigned short*)&rawTgx[tgxSize + 1]) = stateArray[counter - 1];
+        tgxSize += 3;
+      }
+      else
+      {
+        size_t sameCounter{};
+
+        while (lineCounter < width && counter < 32)
+        {
+          pixel = rawPixel[i + 1];
+          if (pixel == stateArray[counter - 1])  // same color
+          {
+            ++sameCounter;
+            if (sameCounter > 0) // currently one repeating pixel provokes same color
+            {
+              // resetting index (one pixel at the moment!)
+              counter -= 1;
+
+              i -= 1;
+              lineCounter -= 1;
+              break;
+            }
+          }
+          stateArray[counter] = pixel;
+          ++counter;
+
+          ++i;  // manipulate loop
+          ++lineCounter;
+        }
+
+        rawTgx[tgxSize] = (unsigned char)(STREAM_OF_PIXELS | (counter - 1));
+        ++tgxSize;
+        std::memcpy(&rawTgx[tgxSize], stateArray, counter * sizeof(unsigned short));
+        tgxSize += counter * sizeof(unsigned short);
+      }
+    }
+
+
+    if (lineCounter >= width)
+    {
+      rawTgx[tgxSize] = NEWLINE;
+      ++tgxSize;
       lineCounter = 0;
     }
   }
 
-  bool 
+
+  // testout
+  std::ofstream outdata;
+  outdata.open("gm/test.tgx");
+  outdata.write((char *) &width, 4);
+  outdata.write((char*) &height, 4);
+  outdata.write((char*) rawTgx.data(), tgxSize);
 
   // use this further: https://stackoverflow.com/a/52685194
   return 0;
