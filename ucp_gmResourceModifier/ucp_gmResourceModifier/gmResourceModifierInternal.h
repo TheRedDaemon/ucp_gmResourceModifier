@@ -92,6 +92,7 @@ private:
 public:
 
   static int CreateGm1Resource(const char* filename);
+  static int CreateGm1ResourceFromImage(const char* filepath);
   static bool FreeGm1Resource(int resourceId);
 
   static void ReadyAllResources();  // for init
@@ -176,6 +177,7 @@ inline ImageHeader* shcImageHeaderStart{};
 inline int* shcSizesStart{};
 inline int* shcOffsetStart{};
 
+inline bool initDone{ false };
 
 /* exports */
 

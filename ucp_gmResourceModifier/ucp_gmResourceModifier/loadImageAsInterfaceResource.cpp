@@ -8,10 +8,6 @@
 #include "IUnknownWrapper.h"
 
 
-// test
-#include <fstream>
-
-
 enum TgxStreamHeader : unsigned char
 {
   STREAM_OF_PIXELS = 0x0,
@@ -25,16 +21,15 @@ enum TgxStreamHeader : unsigned char
 
 static IUnknownWrapper<IWICImagingFactory> imageFactory;
 
-
-// WARNING: not thread safe
-static LPCWSTR GetWideCharFilepathFromUTF8(const char* utf8Str)
+// hopefully moves
+static std::vector<WCHAR> GetWideCharFilepathFromUTF8(const char* utf8Str)
 {
-  static std::vector<WCHAR> wCharBuffer{};  // stays to return ptr
+  std::vector<WCHAR> wCharBuffer{};
 
   int sizeAndRes{ MultiByteToWideChar(CP_UTF8, 0, utf8Str, -1, 0, 0) };
   if (!sizeAndRes)
   {
-    return nullptr;
+    return {};
   }
 
   wCharBuffer.resize(sizeAndRes);
@@ -42,101 +37,70 @@ static LPCWSTR GetWideCharFilepathFromUTF8(const char* utf8Str)
   sizeAndRes = MultiByteToWideChar(CP_UTF8, 0, utf8Str, -1, wCharBuffer.data(), sizeAndRes);
   if (!sizeAndRes)
   {
-    return nullptr;
+    return {};
   }
 
-  return wCharBuffer.data();
+  return wCharBuffer;
 }
 
 
-// sources:
-// https://docs.microsoft.com/en-us/windows/win32/wic/-wic-api
-// https://docs.microsoft.com/de-de/windows/win32/wic/-wic-creating-decoder
-extern "C" __declspec(dllexport) int __stdcall LoadResourceFromImage(const char* filepath)
+// hopefully at least moves
+static std::vector<unsigned short> GetFrameData(IUnknownWrapper<IWICBitmapDecoder>& decoderInterface,
+  size_t frameIndex, size_t& outWidth, size_t& outHeight)
 {
-  if (!imageFactory)
-  {
-    if (CoCreateInstance(CLSID_WICImagingFactory, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(imageFactory.expose())) != S_OK)
-    {
-      LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to obtain image factory interface.");
-      return -1;
-    }
-  }
-
-  // get filepath
-
-  LPCWSTR filepathWideStr{ GetWideCharFilepathFromUTF8(filepath) };
-  if (!filepathWideStr)
-  {
-    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to decode filepath (UTF-8).");
-    return -1;
-  }
-
-  // load image
-
-  IUnknownWrapper<IWICBitmapDecoder> decoderInterface;
-  if (FAILED(imageFactory->CreateDecoderFromFilename(
-    filepathWideStr,                    // Image to be decoded
-    NULL,                               // Do not prefer a particular vendor
-    GENERIC_READ,                       // Desired read access to the file
-    WICDecodeMetadataCacheOnDemand,     // Cache metadata when needed
-    decoderInterface.expose()           // Pointer to the decoder
-  )))
-  {
-    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to obtain decoder. File invalid or missing.");
-    return -1;
-  }
-
-  size_t frameCount{};
-  decoderInterface->GetFrameCount(&frameCount);
-  // TODO: use frameCount, to produce resource with all contained pictures
-
-  size_t width{ 0 };
-  size_t height{ 0 };
   std::vector<unsigned short> rawPixel{};
+  size_t width{};
+  size_t height{};
 
-  // use blocks, so that the resources are closed after receiving the pixels
+  // Retrieve the first frame of the image from the decoder
+  IUnknownWrapper<IWICBitmapFrameDecode> frame;
+  if (FAILED(decoderInterface->GetFrame(frameIndex, frame.expose())))
   {
-    // Retrieve the first frame of the image from the decoder
-    IUnknownWrapper<IWICBitmapFrameDecode> frame;
-    if (FAILED(decoderInterface->GetFrame(0, frame.expose())))
-    {
-      LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to obtain frame.");
-      return -1;
-    }
-
-    IUnknownWrapper<IWICBitmapSource> frameBGRA16;
-    if (FAILED(WICConvertBitmapSource(GUID_WICPixelFormat16bppBGRA5551, frame.get(), frameBGRA16.expose())))
-    {
-      LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to transform an image into intermediate format.");
-      return -1;
-    }
-
-    if (FAILED(frameBGRA16->GetSize(&width, &height)))
-    {
-      LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to obtain frame size.");
-      return -1;
-    }
-
-    // I know the pixels are 16 bit, because I requested it
-    rawPixel.resize(width * height);
-    if (FAILED(frameBGRA16->CopyPixels(nullptr, width * sizeof(unsigned short), width * height * sizeof(unsigned short), (BYTE*)rawPixel.data())))
-    {
-      LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to obtain raw pixels.");
-      return -1;
-    }
+    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to obtain frame.");
+    return {};
   }
 
-  size_t tgxSize{ 0 };
+  IUnknownWrapper<IWICBitmapSource> frameBGRA16;
+  if (FAILED(WICConvertBitmapSource(GUID_WICPixelFormat16bppBGRA5551, frame.get(), frameBGRA16.expose())))
+  {
+    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to transform an image into intermediate format.");
+    return {};
+  }
+
+  if (FAILED(frameBGRA16->GetSize(&width, &height)))
+  {
+    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to obtain frame size.");
+    return {};
+  }
+
+  // I know the pixels are 16 bit, because I requested it
+  rawPixel.resize(width * height);
+  if (FAILED(frameBGRA16->CopyPixels(nullptr, width * sizeof(unsigned short), width * height * sizeof(unsigned short), (BYTE*)rawPixel.data())))
+  {
+    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to obtain raw pixels.");
+    return {};
+  }
+
+  outWidth = width;
+  outHeight = height;
+  return rawPixel;
+}
+
+
+// hopefully at least moves
+static std::vector<unsigned char> TransformToTGX(const std::vector<unsigned short>& rawPixel, size_t width, size_t height)
+{
   std::vector<unsigned char> rawTgx{};
+
   // worst size is one control + one pixel + one newline at every vertical line end -> number of pixels * size of ushort * 1.5 + height
   rawTgx.resize(rawPixel.size() * sizeof(unsigned short) * 1.5f + height);
 
+  size_t tgxSize{ 0 };
   size_t lineCounter{};
   for (size_t i{ 0 }; i < rawPixel.size(); ++i)
   {
     size_t counter{ 0 };
-    
+
     ++lineCounter;
     unsigned short pixel = rawPixel[i];
     if (!(pixel & 0x8000))  // transparent
@@ -226,16 +190,156 @@ extern "C" __declspec(dllexport) int __stdcall LoadResourceFromImage(const char*
     }
   }
 
+  rawTgx.resize(tgxSize); // reduce to actual size
+  return rawTgx;
+}
 
-  // testout
-  //std::ofstream outdata;
-  //outdata.open("gm/test.tgx", std::ios_base::binary); // binary flag needed to avoid modification
-  //outdata.write((char *) &width, 4);
-  //outdata.write((char*) &height, 4);
-  //outdata.write((char*) rawTgx.data(), tgxSize);
 
-  // use this further: https://stackoverflow.com/a/52685194
-  return 0;
+
+// sources:
+// https://docs.microsoft.com/en-us/windows/win32/wic/-wic-api
+// https://docs.microsoft.com/de-de/windows/win32/wic/-wic-creating-decoder
+int Gm1ResourceManager::CreateGm1ResourceFromImage(const char* filepath)
+{
+  if (!imageFactory)
+  {
+    if (CoCreateInstance(CLSID_WICImagingFactory, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(imageFactory.expose())) != S_OK)
+    {
+      LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to obtain image factory interface.");
+      return -1;
+    }
+  }
+
+  // get filepath
+
+  std::vector<WCHAR> filepathWideStr{ GetWideCharFilepathFromUTF8(filepath) };
+  if (filepathWideStr.empty())
+  {
+    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to decode filepath (UTF-8).");
+    return -1;
+  }
+
+  // load image
+
+  IUnknownWrapper<IWICBitmapDecoder> decoderInterface;
+  if (FAILED(imageFactory->CreateDecoderFromFilename(
+    filepathWideStr.data(),             // Image to be decoded
+    NULL,                               // Do not prefer a particular vendor
+    GENERIC_READ,                       // Desired read access to the file
+    WICDecodeMetadataCacheOnDemand,     // Cache metadata when needed
+    decoderInterface.expose()           // Pointer to the decoder
+  )))
+  {
+    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to obtain decoder. File invalid or missing.");
+    return -1;
+  }
+
+  size_t frameCount{};
+  if (FAILED(decoderInterface->GetFrameCount(&frameCount)))
+  {
+    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to frame count.");
+    return -1;
+  }
+
+  std::vector<ImageHeader> resourceImageHeaders{};
+  std::vector<int> resourceOffsets{};
+  std::vector<int> resourceSizes{};
+  std::vector<std::vector<unsigned char>> resourcesDataVectors{};
+
+  for (size_t i{ 0 }; i < frameCount; ++i)
+  {
+    size_t width{ 0 };
+    size_t height{ 0 };
+    std::vector<unsigned short> rawPixel{ GetFrameData(decoderInterface, 0, width, height) };
+    if (rawPixel.empty())
+    {
+      return -1;
+    }
+
+    resourcesDataVectors.push_back(TransformToTGX(rawPixel, width, height));
+    if (resourcesDataVectors.back().empty())
+    {
+      return -1;
+    }
+
+    resourceOffsets.push_back( i > 0 ? resourceOffsets.back() + resourceSizes.back() : 0 );
+    resourceSizes.push_back(resourcesDataVectors.back().size());
+    ImageHeader& header{ resourceImageHeaders.emplace_back() };
+
+    // for now only set dimensions?
+    header.width = static_cast<unsigned short>(width);
+    header.height = static_cast<unsigned short>(height);
+  }
+
+  // a little late, but I do not want to return the id at every if statement
+  // also sadly duplicate from the other id load
+
+  int newId{ GetId() };
+  if (newId < 0)
+  {
+    LogHelper(LuaLog::LOG_WARNING, "[gmResourceModifier]: Error while loading resource ", filepath, "All ids used.");
+    return -1;
+  }
+
+  auto [it, success] { resources.try_emplace(newId) };
+  if (!success)
+  {
+    LogHelper(LuaLog::LOG_WARNING, "[gmResourceModifier]: Error while loading resource ", filepath, "Failed to place resource in map.");
+    ReturnId(newId);
+    return -1;
+  }
+
+  // create header
+
+  Gm1Resource& resource{ it->second };
+
+  // create full array
+  resource.imageData.swap(resourcesDataVectors.at(0));
+  if (resourcesDataVectors.size() > 1)
+  {
+    size_t totalSize{ resource.imageData.size() };
+    size_t currentIndex{ totalSize };
+
+    for (size_t i{ 1 }; i < resourcesDataVectors.size(); i++)
+    {
+      totalSize += resourcesDataVectors.at(i).size();
+    }
+    resource.imageData.resize(totalSize);
+
+    for (size_t i{ 1 }; i < resourcesDataVectors.size(); i++)
+    {
+      auto& dataVec{ resourcesDataVectors.at(i) };
+      std::memcpy(&resource.imageData[currentIndex], dataVec.data(), dataVec.size());
+      currentIndex += dataVec.size();
+    }
+  }
+
+  resource.gm1Header = std::make_unique<Gm1Header>();
+  resource.gm1Header->gm1Type = Gm1Type::INTERFACE; // testing with interface
+  resource.gm1Header->numberOfPicturesInFile = resourceImageHeaders.size();
+  resource.gm1Header->dataSize = resource.imageData.size();
+
+  resource.imageHeader.swap(resourceImageHeaders);
+  resource.imageSizes.swap(resourceSizes);
+  resource.imageOffset.swap(resourceOffsets);
+
+  if (initDone && !Gm1ResourceManager::ReadyResource(resource))
+  {
+    LogHelper(LuaLog::LOG_WARNING, "[gmResourceModifier]: Error while loading resource ", filepath, "Failed to ready resource.");
+    ReturnId(newId);
+    resources.erase(newId);
+    return -1;
+  }
+
+  resource.resourceId = newId;
+  return newId;
+}
+
+
+
+extern "C" __declspec(dllexport) int __stdcall LoadResourceFromImage(const char* filepath)
+{
+  return Gm1ResourceManager::CreateGm1ResourceFromImage(filepath);
 }
 
 

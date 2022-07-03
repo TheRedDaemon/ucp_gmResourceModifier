@@ -16,7 +16,6 @@
 static std::vector<Replacer> replacerVector{};
 
 static std::vector<std::tuple<int, int, int, int>> preRequests{}; // contains replace requests made before all variables were initialized
-static bool initDone{ false };
 
 // variables received from the header:
 static Gm1Header* shcHeaderStart{};
