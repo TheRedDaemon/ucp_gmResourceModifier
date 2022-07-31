@@ -449,10 +449,14 @@ void Replacer::copyToShc(Gm1Resource& resource, int imageIndex, int resourceImag
   }
   else
   {
+    --(Gm1ResourceManager::GetResource(iter->second.first)->refCounter);
     if (origResource.get() != &resource)
     {
-      --(Gm1ResourceManager::GetResource(iter->second.first)->refCounter);
       iter->second = std::pair<int, int>(resource.resourceId, resourceImageIndex);
+    }
+    else
+    {
+      imageReplaced.erase(iter);
     }
   }
 
