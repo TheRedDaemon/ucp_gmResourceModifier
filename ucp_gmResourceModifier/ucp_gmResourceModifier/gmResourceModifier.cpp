@@ -561,6 +561,11 @@ extern "C" __declspec(dllexport) bool __stdcall SetGm(int gmID, int imageInGm, i
     LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: SetGm: Invalid resource number given.");
     return false;
   }
+  if (imageInGm < 0)
+  {
+    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: SetGm: Missing number of image to replace.");
+    return false;
+  }
 
   currentReplacer.copyToShc(resource, imageInGm, imageInResource);
   return true;
