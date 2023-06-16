@@ -27,7 +27,7 @@ void __thiscall ColorAdapter::detouredLoadGmFiles(char* fileNameArray)
 {
   if (initDone)
   {
-    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier] Called init func again. Ignored.");
+    Log(LOG_WARNING, "[gmResourceModifier] Called init func again. Ignored.");
     return;
   }
 
@@ -110,7 +110,7 @@ void ColorAdapter::AdaptGm1Resource(Gm1Resource& resource)
 {
   if (resource.done)
   {
-    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier] Color adapt received already done resource. Skipping transform.");
+    Log(LOG_WARNING, "[gmResourceModifier] Color adapt received already done resource. Skipping transform.");
   }
 
   if (*gamePixelFormat != PixelFormat::RGB_565) {
@@ -154,18 +154,18 @@ void ColorAdapter::AdaptGm1Resource(Gm1Resource& resource)
     }
 
     default:
-      LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier] Color adapt received unknown resource type. Skipping transform.");
+      Log(LOG_WARNING, "[gmResourceModifier] Color adapt received unknown resource type. Skipping transform.");
       break;
   }
 }
 
 
-void Gm1ResourceManager::LogHelper(LuaLog::LogLevel level, const char* start, const char* filename, const char* error)
+void Gm1ResourceManager::LogHelper(const LogLevel level, const char* start, const char* filename, const char* error)
 {
   static std::stringstream stream{};
   stream.clear();
   stream << start << "'" << filename << "': " << error;
-  LuaLog::log(level, stream.str().c_str());
+  Log(level, stream.str().c_str());
 }
 
 int Gm1ResourceManager::CreateGm1Resource(const char* filename)
@@ -174,7 +174,7 @@ int Gm1ResourceManager::CreateGm1Resource(const char* filename)
   int newId{ GetId() };
   if (newId < 0)
   {
-    LogHelper(LuaLog::LOG_WARNING, "[gmResourceModifier]: Error while loading resource ", filename, "All ids used.");
+    LogHelper(LOG_WARNING, "[gmResourceModifier]: Error while loading resource ", filename, "All ids used.");
     return -1;
   }
 
@@ -216,7 +216,7 @@ int Gm1ResourceManager::CreateGm1Resource(const char* filename)
   {
     char errMsg[100];
     strerror_s(errMsg, 100, errno);
-    LogHelper(LuaLog::LOG_WARNING, "[gmResourceModifier]: Error while loading resource ", filename, errMsg);
+    LogHelper(LOG_WARNING, "[gmResourceModifier]: Error while loading resource ", filename, errMsg);
     ReturnId(newId);
     return -1;
   }
@@ -224,7 +224,7 @@ int Gm1ResourceManager::CreateGm1Resource(const char* filename)
   auto [it, success]{ resources.try_emplace(newId) };
   if (!success)
   {
-    LogHelper(LuaLog::LOG_WARNING, "[gmResourceModifier]: Error while loading resource ", filename, "Failed to place resource in map.");
+    LogHelper(LOG_WARNING, "[gmResourceModifier]: Error while loading resource ", filename, "Failed to place resource in map.");
     ReturnId(newId);
     return -1;
   }
@@ -238,7 +238,7 @@ int Gm1ResourceManager::CreateGm1Resource(const char* filename)
 
   if (initDone && !Gm1ResourceManager::ReadyResource(resource))
   {
-    LogHelper(LuaLog::LOG_WARNING, "[gmResourceModifier]: Error while loading resource ", filename, "Failed to ready resource.");
+    LogHelper(LOG_WARNING, "[gmResourceModifier]: Error while loading resource ", filename, "Failed to ready resource.");
     ReturnId(newId);
     resources.erase(newId);
     return -1;
@@ -252,13 +252,13 @@ bool Gm1ResourceManager::ReadyResource(Gm1Resource& resource)
 {
   if (!initDone)
   {
-    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: Tried to ready resource before init.");
+    Log(LOG_WARNING, "[gmResourceModifier]: Tried to ready resource before init.");
     return false;
   }
 
   if (resource.done)
   {
-    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: Tried to ready resource twice.");
+    Log(LOG_WARNING, "[gmResourceModifier]: Tried to ready resource twice.");
     return false;
   }
 
@@ -306,9 +306,9 @@ bool Gm1ResourceManager::FreeGm1Resource(int resourceId)
   }
   Gm1Resource& resource{ *resPtr };
 
-  if (resPtr->refCounter > 0)
+  if (resource.refCounter > 0)
   {
-    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: FreeGm1Resource: Resource in use. Can not free.");
+    Log(LOG_WARNING, "[gmResourceModifier]: FreeGm1Resource: Resource in use. Can not free.");
     return false;
   }
 
@@ -347,7 +347,7 @@ Gm1Resource* Gm1ResourceManager::GetResource(int resourceId)
   auto iter{ resources.find(resourceId) };
   if (iter == resources.end())
   {
-    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: GetResource: Invalid ResourceID given.");
+    Log(LOG_WARNING, "[gmResourceModifier]: GetResource: Invalid ResourceID given.");
     return nullptr;
   }
   return &iter->second;
@@ -486,7 +486,7 @@ extern "C" __declspec(dllexport) bool __stdcall SetGm(int gmID, int imageInGm, i
     static bool warnPrinted{ false };
     if (!warnPrinted)
     {
-      LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: Important: 'SetGm' Requests before the first Init will always return true.");
+      Log(LOG_WARNING, "[gmResourceModifier]: Important: 'SetGm' Requests before the first Init will always return true.");
       warnPrinted = true;
     }
 
@@ -496,7 +496,7 @@ extern "C" __declspec(dllexport) bool __stdcall SetGm(int gmID, int imageInGm, i
 
   if (gmID < 0 || gmID > 239) // hardcoded currently
   {
-    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: SetGm: Invalid GmID given.");
+    Log(LOG_WARNING, "[gmResourceModifier]: SetGm: Invalid GmID given.");
     return false;
   }
 
@@ -505,7 +505,7 @@ extern "C" __declspec(dllexport) bool __stdcall SetGm(int gmID, int imageInGm, i
 
   if (imageInGm >= 0 && imageInGm > currentReplacer.origResource->gm1Header->numberOfPicturesInFile - 1)
   {
-    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: SetGm: Invalid SHC GM1 picture number given.");
+    Log(LOG_WARNING, "[gmResourceModifier]: SetGm: Invalid SHC GM1 picture number given.");
     return false;
   }
 
@@ -538,17 +538,17 @@ extern "C" __declspec(dllexport) bool __stdcall SetGm(int gmID, int imageInGm, i
 
     if (!(origIsTgxType && resourceIsTgxType))
     {
-      LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: SetGm: Resource can not be replaced. Incompatible types.");
+      Log(LOG_WARNING, "[gmResourceModifier]: SetGm: Resource can not be replaced. Incompatible types.");
       return false;
     }
-    LuaLog::log(LuaLog::LOG_DEBUG, "[gmResourceModifier]: SetGm: Replacing TGX data of gm with resource of different type.");
+    Log(LOG_DEBUG, "[gmResourceModifier]: SetGm: Replacing TGX data of gm with resource of different type.");
   }
 
   if (imageInResource < 0)
   {
     if (currentReplacer.origResource->gm1Header->numberOfPicturesInFile != resource.gm1Header->numberOfPicturesInFile)
     {
-      LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: SetGm: Complete resource replace can only happen if number of images equal.");
+      Log(LOG_WARNING, "[gmResourceModifier]: SetGm: Complete resource replace can only happen if number of images equal.");
       return false;
     }
 
@@ -558,12 +558,12 @@ extern "C" __declspec(dllexport) bool __stdcall SetGm(int gmID, int imageInGm, i
 
   if (imageInResource > resource.gm1Header->numberOfPicturesInFile - 1)
   {
-    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: SetGm: Invalid resource number given.");
+    Log(LOG_WARNING, "[gmResourceModifier]: SetGm: Invalid resource number given.");
     return false;
   }
   if (imageInGm < 0)
   {
-    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: SetGm: Missing number of image to replace.");
+    Log(LOG_WARNING, "[gmResourceModifier]: SetGm: Missing number of image to replace.");
     return false;
   }
 

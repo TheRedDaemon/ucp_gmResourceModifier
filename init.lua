@@ -1,5 +1,16 @@
 local exports = {}
 
+local function getAddress(aob, errorMsg, modifierFunc)
+  local address = core.AOBScan(aob, 0x400000)
+  if address == nil then
+    log(ERROR, errorMsg)
+    error("'gmResourceModifier' can not be initialized.")
+  end
+  if modifierFunc == nil then
+    return address;
+  end
+  return modifierFunc(address)
+end
 
 --[[ Main Func ]]--
 
@@ -7,60 +18,49 @@ exports.enable = function(self, moduleConfig, globalConfig)
 
   --[[ get addresses ]]--
 
-  local placeToReplaceLoadGmsAddr = core.AOBScan("e8 ? ? ? ff b9 ? ? ? 02 e8 ? ? ? ff 53 6a 03", 0x400000)
-  if placeToReplaceLoadGmsAddr == nil then
-    log(ERROR, "'gmResourceModifier' was unable to find the gms loading call.")
-    error("'gmResourceModifier' can not be initialized.")
-  end
+  local placeToReplaceLoadGmsAddr = getAddress(
+    "e8 ? ? ? ff b9 ? ? ? 02 e8 ? ? ? ff 53 6a 03",
+    "'gmResourceModifier' was unable to find the gms loading call."
+  )
   
-  local actualLoadGmsAddress = core.AOBScan("53 55 8b 6c 24 0c 56 57 8b d9", 0x400000)
-  if actualLoadGmsAddress == nil then
-    log(ERROR, "'gmResourceModifier' was unable to find the actual gms loading address.")
-    error("'gmResourceModifier' can not be initialized.")
-  end
+  local actualLoadGmsAddress = getAddress(
+    "53 55 8b 6c 24 0c 56 57 8b d9",
+    "'gmResourceModifier' was unable to find the actual gms loading address."
+  )
   
-  local transformRGB555ToRGB565 = core.AOBScan("55 8b ec 83 ec 0c 8b 45 08", 0x400000)
-  if transformRGB555ToRGB565 == nil then
-    log(ERROR, "'gmResourceModifier' was unable to find the RGB555 To RGB565 func address.")
-    error("'gmResourceModifier' can not be initialized.")
-  end
+  local transformRGB555ToRGB565 = getAddress(
+    "55 8b ec 83 ec 0c 8b 45 08",
+    "'gmResourceModifier' was unable to find the RGB555 To RGB565 func address."
+  )
 
-  local gmImageHeaderAddr = core.AOBScan("c1 e0 04 81 c1 ? ? ? 00 50 51", 0x400000)
-  if gmImageHeaderAddr == nil then
-    log(ERROR, "'gmResourceModifier' was unable to find the image header address.")
-    error("'gmResourceModifier' can not be initialized.")
-  end
-  gmImageHeaderAddr = core.readInteger(gmImageHeaderAddr + 5)
+  local gmImageHeaderAddr = getAddress(
+    "c1 e0 04 81 c1 ? ? ? 00 50 51",
+    "'gmResourceModifier' was unable to find the image header address.",
+    function(foundAddress) return core.readInteger(foundAddress + 5) end
+  )
 
-  local gmSizesAddr = core.AOBScan("89 14 bd ? ? ? 00 eb 53", 0x400000)
-  if gmSizesAddr == nil then
-    log(ERROR, "'gmResourceModifier' was unable to find the gm sizes address.")
-    error("'gmResourceModifier' can not be initialized.")
-  end
-  gmSizesAddr = core.readInteger(gmSizesAddr + 3)
+  local gmSizesAddr = getAddress(
+    "89 14 bd ? ? ? 00 eb 53",
+    "'gmResourceModifier' was unable to find the gm sizes address.",
+    function(foundAddress) return core.readInteger(foundAddress + 3) end
+  )
 
-  local gmOffsetAddr = core.AOBScan("8b 2c bd ? ? ? 00 03 d7 3b fa", 0x400000)
-  if gmOffsetAddr == nil then
-    log(ERROR, "'gmResourceModifier' was unable to find the gm offset address.")
-    error("'gmResourceModifier' can not be initialized.")
-  end
-  gmOffsetAddr = core.readInteger(gmOffsetAddr + 3)
+  local gmOffsetAddr = getAddress(
+    "8b 2c bd ? ? ? 00 03 d7 3b fa",
+    "'gmResourceModifier' was unable to find the gm offset address.",
+    function(foundAddress) return core.readInteger(foundAddress + 3) end
+  )
   
-  local pixelFormatAddr = core.AOBScan("81 3d ? ? ? 00 65 05 00 00 75 40", 0x400000)
-  if pixelFormatAddr == nil then
-    log(ERROR, "'gmResourceModifier' was unable to find the address of the pixel format.")
-    error("'gmResourceModifier' can not be initialized.")
-  end
-  pixelFormatAddr = core.readInteger(pixelFormatAddr + 2)
+  local pixelFormatAddr = getAddress(
+    "81 3d ? ? ? 00 65 05 00 00 75 40",
+    "'gmResourceModifier' was unable to find the address of the pixel format.",
+    function(foundAddress) return core.readInteger(foundAddress + 2) end
+  )
 
 
   --[[ load module ]]--
   
   local requireTable = require("gmResourceModifier.dll") -- loads the dll in memory and runs luaopen_gmResourceModifier
-  
-  for name, addr in pairs(requireTable.funcPtr) do
-    self[name] = addr
-  end
   
   -- no wrapping needed?
   self.LoadGm1Resource = requireTable.lua_LoadGm1Resource

@@ -108,7 +108,7 @@ private:
   static bool ReadyResource(Gm1Resource& resource);
 
   // the compiler should optimize this
-  static void LogHelper(LuaLog::LogLevel level, const char* start, const char* filename, const char* error);
+  static void LogHelper(LogLevel level, const char* start, const char* filename, const char* error);
 };
 
 

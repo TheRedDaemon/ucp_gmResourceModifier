@@ -56,20 +56,20 @@ static std::vector<unsigned short> GetFrameData(IUnknownWrapper<IWICBitmapDecode
   IUnknownWrapper<IWICBitmapFrameDecode> frame;
   if (FAILED(decoderInterface->GetFrame(frameIndex, frame.expose())))
   {
-    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to obtain frame.");
+    Log(LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to obtain frame.");
     return {};
   }
 
   IUnknownWrapper<IWICBitmapSource> frameBGRA16;
   if (FAILED(WICConvertBitmapSource(GUID_WICPixelFormat16bppBGRA5551, frame.get(), frameBGRA16.expose())))
   {
-    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to transform an image into intermediate format.");
+    Log(LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to transform an image into intermediate format.");
     return {};
   }
 
   if (FAILED(frameBGRA16->GetSize(&width, &height)))
   {
-    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to obtain frame size.");
+    Log(LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to obtain frame size.");
     return {};
   }
 
@@ -77,7 +77,7 @@ static std::vector<unsigned short> GetFrameData(IUnknownWrapper<IWICBitmapDecode
   rawPixel.resize(width * height);
   if (FAILED(frameBGRA16->CopyPixels(nullptr, width * sizeof(unsigned short), width * height * sizeof(unsigned short), (BYTE*)rawPixel.data())))
   {
-    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to obtain raw pixels.");
+    Log(LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to obtain raw pixels.");
     return {};
   }
 
@@ -92,8 +92,9 @@ static std::vector<unsigned char> TransformToTGX(const std::vector<unsigned shor
 {
   std::vector<unsigned char> rawTgx{};
 
-  // worst size is one control + one pixel + one newline at every vertical line end -> number of pixels * size of ushort * 1.5 + height
-  rawTgx.resize(rawPixel.size() * sizeof(unsigned short) * 1.5f + height);
+  // worst size is one control + one pixel + one newline at every vertical line end
+  // -> number of pixels * size of ushort * 1.5 + height (ushort * 1.5 = 3 char)
+  rawTgx.resize(rawPixel.size() * sizeof(char[3]) + height);
 
   size_t tgxSize{ 0 };
   size_t lineCounter{};
@@ -205,7 +206,7 @@ int Gm1ResourceManager::CreateGm1ResourceFromImage(const char* filepath)
   {
     if (CoCreateInstance(CLSID_WICImagingFactory, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(imageFactory.expose())) != S_OK)
     {
-      LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to obtain image factory interface.");
+      Log(LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to obtain image factory interface.");
       return -1;
     }
   }
@@ -215,7 +216,7 @@ int Gm1ResourceManager::CreateGm1ResourceFromImage(const char* filepath)
   std::vector<WCHAR> filepathWideStr{ GetWideCharFilepathFromUTF8(filepath) };
   if (filepathWideStr.empty())
   {
-    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to decode filepath (UTF-8).");
+    Log(LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to decode filepath (UTF-8).");
     return -1;
   }
 
@@ -230,14 +231,14 @@ int Gm1ResourceManager::CreateGm1ResourceFromImage(const char* filepath)
     decoderInterface.expose()           // Pointer to the decoder
   )))
   {
-    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to obtain decoder. File invalid or missing.");
+    Log(LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to obtain decoder. File invalid or missing.");
     return -1;
   }
 
   size_t frameCount{};
   if (FAILED(decoderInterface->GetFrameCount(&frameCount)))
   {
-    LuaLog::log(LuaLog::LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to frame count.");
+    Log(LOG_WARNING, "[gmResourceModifier]: LoadResourceFromImage: Was unable to frame count.");
     return -1;
   }
 
@@ -277,14 +278,14 @@ int Gm1ResourceManager::CreateGm1ResourceFromImage(const char* filepath)
   int newId{ GetId() };
   if (newId < 0)
   {
-    LogHelper(LuaLog::LOG_WARNING, "[gmResourceModifier]: Error while loading resource ", filepath, "All ids used.");
+    LogHelper(LOG_WARNING, "[gmResourceModifier]: Error while loading resource ", filepath, "All ids used.");
     return -1;
   }
 
   auto [it, success] { resources.try_emplace(newId) };
   if (!success)
   {
-    LogHelper(LuaLog::LOG_WARNING, "[gmResourceModifier]: Error while loading resource ", filepath, "Failed to place resource in map.");
+    LogHelper(LOG_WARNING, "[gmResourceModifier]: Error while loading resource ", filepath, "Failed to place resource in map.");
     ReturnId(newId);
     return -1;
   }
@@ -325,7 +326,7 @@ int Gm1ResourceManager::CreateGm1ResourceFromImage(const char* filepath)
 
   if (initDone && !Gm1ResourceManager::ReadyResource(resource))
   {
-    LogHelper(LuaLog::LOG_WARNING, "[gmResourceModifier]: Error while loading resource ", filepath, "Failed to ready resource.");
+    LogHelper(LOG_WARNING, "[gmResourceModifier]: Error while loading resource ", filepath, "Failed to ready resource.");
     ReturnId(newId);
     resources.erase(newId);
     return -1;

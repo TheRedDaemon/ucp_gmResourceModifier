@@ -9,11 +9,6 @@
 // lua module load
 extern "C" __declspec(dllexport) int __cdecl luaopen_gmResourceModifier(lua_State * L)
 {
-  if (!LuaLog::init(L))
-  {
-    luaL_error(L, "[gmResourceModifier]: Failed to receive Log functions.");
-  }
-
   lua_newtable(L); // push a new table on the stack
 
   // simple replace
@@ -46,20 +41,6 @@ extern "C" __declspec(dllexport) int __cdecl luaopen_gmResourceModifier(lua_Stat
   lua_pushinteger(L, (DWORD)&shcOffsetStart);
   lua_setfield(L, -2, "address_ShcOffsetStart");
 
-  // add functions
-  lua_newtable(L); // push function table
-  lua_pushinteger(L, (DWORD)SetGm);
-  lua_setfield(L, -2, GmResourceModifierHeader::NAME_SET_GM);
-  lua_pushinteger(L, (DWORD)LoadGm1Resource);
-  lua_setfield(L, -2, GmResourceModifierHeader::NAME_LOAD_RESOURCE);
-  lua_pushinteger(L, (DWORD)FreeGm1Resource);
-  lua_setfield(L, -2, GmResourceModifierHeader::NAME_FREE_RESOURCE);
-  lua_pushinteger(L, (DWORD)LoadResourceFromImage);
-  lua_setfield(L, -2, GmResourceModifierHeader::NAME_LOAD_RESOURCE_FROM_IMAGE);
-
-  // add table
-  lua_setfield(L, -2, "funcPtr");
-
   // return lua funcs
 
   lua_pushcfunction(L, lua_SetGm);
@@ -72,21 +53,4 @@ extern "C" __declspec(dllexport) int __cdecl luaopen_gmResourceModifier(lua_Stat
   lua_setfield(L, -2, "lua_LoadResourceFromImage");
 
   return 1;
-}
-
-// entry point
-BOOL APIENTRY DllMain(HMODULE,
-  DWORD  ul_reason_for_call,
-  LPVOID
-)
-{
-  switch (ul_reason_for_call)
-  {
-    case DLL_PROCESS_ATTACH:
-    case DLL_THREAD_ATTACH:
-    case DLL_THREAD_DETACH:
-    case DLL_PROCESS_DETACH:
-      break;
-  }
-  return TRUE;
 }
