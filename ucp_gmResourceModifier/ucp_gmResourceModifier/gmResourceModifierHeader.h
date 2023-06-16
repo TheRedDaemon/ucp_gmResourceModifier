@@ -13,7 +13,7 @@ namespace GmResourceModifierHeader
   using FuncSetGm = bool(__stdcall*)(int gmID, int imageInGm, int resourceId, int imageInResource);
   using FuncFreeResource = bool(__stdcall*)(int resourceId);
 
-  inline constexpr char const* NAME_VERSION{ "0.1.0" };
+  inline constexpr char const* NAME_VERSION{ "0.2.0" };
 
   inline constexpr char const* NAME_MODULE{ "gmResourceModifier" };
   inline constexpr char const* NAME_LOAD_RESOURCE{ "_LoadGm1Resource@4" };

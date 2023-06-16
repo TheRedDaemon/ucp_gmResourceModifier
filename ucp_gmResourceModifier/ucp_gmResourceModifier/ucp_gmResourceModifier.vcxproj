@@ -65,7 +65,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='LocalDebug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>..\..\..\..\..\SteamStuff\steamapps\common\Stronghold Crusader Extreme\ucp\modules\gmResourceModifier-0.1.0\</OutDir>
+    <OutDir>..\..\..\..\..\SteamStuff\steamapps\common\Stronghold Crusader Extreme\ucp\modules\gmResourceModifier-0.2.0\</OutDir>
     <TargetName>gmResourceModifier</TargetName>
     <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);..\Dependencies</IncludePath>
     <ExternalIncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);..\Dependencies</ExternalIncludePath>
