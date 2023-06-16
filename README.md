@@ -34,8 +34,9 @@ Other, eastern versions of 1.41 might work.
 
 ### C++-Exports
 
-At the time of creation, C functions would need to be parsed through lua in the form of numbers. To make using the module easier, the header [gmResourceModifierHeader.h](ucp_gmResourceModifier/ucp_gmResourceModifier/gmResourceModifierHeader.h) can be copied into your project.
-It is used by calling the function `initModuleFunctions(lua_state * )` during the lua require call of the dll. It tries to receive the provided functions and returns `true` if successful. For this to work, the *gmResourceModifier* needs to be a dependency of your module.
+The API is provided via exported C functions and can be accessed via the `ucp.dll`-API.  
+To make using the module easier, the header [gmResourceModifierHeader.h](ucp_gmResourceModifier/ucp_gmResourceModifier/gmResourceModifierHeader.h) can be copied into your project.  
+It is used by calling the function *initModuleFunctions()* in your module once after it was loaded, for example in the lua require-call. It tries to receive the provided functions and returns *true* if successful. For this to work, the *gmResourceModifier* needs to be a dependency of your module.
 The provided functions are the following:
 
 * `int LoadGm1Resource(const char* filepath)`  
