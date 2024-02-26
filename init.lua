@@ -63,10 +63,10 @@ exports.enable = function(self, moduleConfig, globalConfig)
   local requireTable = require("gmResourceModifier.dll") -- loads the dll in memory and runs luaopen_gmResourceModifier
   
   -- no wrapping needed?
-  self.LoadGm1Resource = function(self, ...) return requireTable.lua_LoadGm1Resource end
-  self.FreeGm1Resource = function(self, ...) return requireTable.lua_FreeGm1Resource end
-  self.SetGm = function(self, ...) return requireTable.lua_SetGm end
-  self.LoadResourceFromImage = function(self, ...) return requireTable.lua_LoadResourceFromImage end
+  self.LoadGm1Resource = function(self, ...) return requireTable.lua_LoadGm1Resource(...) end
+  self.FreeGm1Resource = function(self, ...) return requireTable.lua_FreeGm1Resource(...) end
+  self.SetGm = function(self, ...) return requireTable.lua_SetGm(...) end
+  self.LoadResourceFromImage = function(self, ...) return requireTable.lua_LoadResourceFromImage(...) end
   
 
   --[[ modify code ]]--
